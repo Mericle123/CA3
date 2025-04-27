@@ -1,6 +1,5 @@
-# Sets up the 3 orgs in the network
+# Hyperledger Fabric Configuration for Digital Identity Management
 
-# CAPABILITIES
 Capabilities:
   Application: &ApplicationCapabilities
     V2_0: true
@@ -9,13 +8,12 @@ Capabilities:
   Channel: &ChannelCapabilities
     V2_0: true
 
-# ORGANIZATIONS
 Organizations:
-  - &Orderer
-    Name: Orderer
+  - &OrdererOrg
+    Name: OrdererMSP
     ID: OrdererMSP
-    MSPDir: ./crypto-config/ordererOrganizations/natuni.edu/msp
-    Policies: &OrdererPolicies
+    MSPDir: ./crypto-config/ordererOrganizations/identitysystem.com/msp
+    Policies:
       Readers:
         Type: Signature
         Rule: "OR('OrdererMSP.member')"
@@ -25,77 +23,75 @@ Organizations:
       Admins:
         Type: Signature
         Rule: "OR('OrdererMSP.admin')"
-      Endorsement:
-        Type: Signature
-        Rule: "OR('OrdererMSP.member')"
-  - &Natuni
-    Name: Natuni
-    ID: NatuniMSP
-    MSPDir: ./crypto-config/peerOrganizations/natuni.edu/msp
-    Policies: &NatuniPolicies
+
+  - &IdentityProvider
+    Name: IdentityProviderMSP
+    ID: IdentityProviderMSP
+    MSPDir: ./crypto-config/peerOrganizations/idprovider.identitysystem.com/msp
+    Policies:
       Readers:
         Type: Signature
-        Rule: "OR('NatuniMSP.member')"
+        Rule: "OR('IdentityProviderMSP.admin', 'IdentityProviderMSP.peer', 'IdentityProviderMSP.client')"
       Writers:
         Type: Signature
-        Rule: "OR('NatuniMSP.member')"
+        Rule: "OR('IdentityProviderMSP.admin', 'IdentityProviderMSP.client')"
       Admins:
         Type: Signature
-        Rule: "OR('NatuniMSP.admin')"
+        Rule: "OR('IdentityProviderMSP.admin')"
       Endorsement:
         Type: Signature
-        Rule: "OR('NatuniMSP.member')"
+        Rule: "OR('IdentityProviderMSP.peer')"
     AnchorPeers:
-      - Host: cit.natuni.edu
-        Port: 7051
-      - Host: cst.natuni.edu
-        Port: 7051
-  - &Privateuni
-    Name: Privateuni
-    ID: PrivateuniMSP
-    MSPDir: ./crypto-config/peerOrganizations/privateuni.edu/msp
-    Policies: &PrivateuniPolicies
-      Readers:
-        Type: Signature
-        Rule: "OR('PrivateuniMSP.member')"
-      Writers:
-        Type: Signature
-        Rule: "OR('PrivateuniMSP.member')"
-      Admins:
-        Type: Signature
-        Rule: "OR('PrivateuniMSP.member')"
-      Endorsement:
-        Type: Signature
-        Rule: "OR('PrivateuniMSP.member')"
-    AnchorPeers:
-      - Host: bus.privateuni.edu
-        Port: 7051
-  - &Interuni
-    Name: Interuni
-    ID: InteruniMSP
-    MSPDir: ./crypto-config/peerOrganizations/interuni.edu/msp
-    Policies: &InteruniPolicies
-      Readers:
-        Type: Signature
-        Rule: "OR('InteruniMSP.member')"
-      Writers:
-        Type: Signature
-        Rule: "OR('InteruniMSP.member')"
-      Admins:
-        Type: Signature
-        Rule: "OR('InteruniMSP.member')"
-      Endorsement:
-        Type: Signature
-        Rule: "OR('InteruniMSP.member')"
-    AnchorPeers:
-      - Host: arts.interuni.edu
+      - Host: peer0.idprovider.identitysystem.com
         Port: 7051
 
-# ORDERER
-Orderer: &OrdererDefaults
-  OrdererType: solo
-  Addresses:
-    - orderer.natuni.edu:7050
+  - &Verifier
+    Name: Verifier
+    ID: VerifierMSP
+    MSPDir: ./crypto-config/peerOrganizations/verifier.identitysystem.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('VerifierMSP.admin', 'VerifierMSP.peer', 'VerifierMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('VerifierMSP.admin', 'VerifierMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('VerifierMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('VerifierMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.verifier.identitysystem.com
+        Port: 7051
+
+  - &User
+    Name: User
+    ID: UserMSP
+    MSPDir: ./crypto-config/peerOrganizations/user.identitysystem.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('UserMSP.admin', 'UserMSP.peer', 'UserMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('UserMSP.admin', 'UserMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('UserMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('UserMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.user.identitysystem.com
+        Port: 7051
+
+Application: &ApplicationDefaults
+  ACLs:
+    _lifecycle/CommitChaincodeDefinition: /Channel/Application/Writers
+    _lifecycle/QueryChaincodeDefinition: /Channel/Application/Readers
+  Organizations:
   Policies:
     Readers:
       Type: ImplicitMeta
@@ -105,44 +101,26 @@ Orderer: &OrdererDefaults
       Rule: "ANY Writers"
     Admins:
       Type: ImplicitMeta
-      Rule: "ANY Admins"
-    BlockValidation:
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
       Type: ImplicitMeta
-      Rule: "ANY Writers"
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: solo
+  Addresses:
+    - orderer.identitysystem.com:7050
   BatchTimeout: 2s
   BatchSize:
     MaxMessageCount: 10
-    AbsoluteMaxBytes: 98 MB
+    AbsoluteMaxBytes: 99 MB
     PreferredMaxBytes: 512 KB
-  Capabilities:
-    !!merge <<: *OrdererCapabilities
-
-# APPLICATION
-Application: &ApplicationDefaults
-  ACLs: &ACLsDefault
-    lscc/ChaincodeExists: /Channel/Application/Readers
-    lscc/GetDeploymentSpec: /Channel/Application/Readers
-    lscc/GetChaincodeData: /Channel/Application/Readers
-    lscc/GetInstantiatedChaincodes: /Channel/Application/Readers
-    qscc/GetChainInfo: /Channel/Application/Readers
-    qscc/GetBlockByNumber: /Channel/Application/Readers
-    qscc/GetBlockByHash: /Channel/Application/Readers
-    qscc/GetTransactionByID: /Channel/Application/Readers
-    qscc/GetBlockByTxID: /Channel/Application/Readers
-    cscc/GetConfigBlock: /Channel/Application/Readers
-    cscc/GetConfigTree: /Channel/Application/Readers
-    cscc/SimulateConfigTreeUpdate: /Channel/Application/Readers
-    peer/Propose: /Channel/Application/Writers
-    peer/ChaincodeToChaincode: /Channel/Application/Readers
-    event/Block: /Channel/Application/Readers
-    event/FilteredBlock: /Channel/Application/Readers
-    _lifecycle/CheckCommitReadiness: /Channel/Application/Writers
-    _lifecycle/CommitChaincodeDefinition: /Channel/Application/Writers
-    _lifecycle/QueryChaincodeDefinition: /Channel/Application/Readers
-  Policies: &ApplicationDefaultPolicies
-    Endorsement:
-      Type: ImplicitMeta
-      Rule: "ANY Endorsement"
+  Policies:
     Readers:
       Type: ImplicitMeta
       Rule: "ANY Readers"
@@ -151,15 +129,11 @@ Application: &ApplicationDefaults
       Rule: "ANY Writers"
     Admins:
       Type: ImplicitMeta
-      Rule: "ANY Admins"
-    LifecycleEndorsement:
+      Rule: "MAJORITY Admins"
+    BlockValidation:
       Type: ImplicitMeta
-      Rule: "ANY Endorsement"
-  Organizations:
-  Capabilities:
-    !!merge <<: *ApplicationCapabilities
+      Rule: "ANY Writers"
 
-# CHANNEL
 Channel: &ChannelDefaults
   Policies:
     Readers:
@@ -170,30 +144,30 @@ Channel: &ChannelDefaults
       Rule: "ANY Writers"
     Admins:
       Type: ImplicitMeta
-      Rule: "ANY Admins"
+      Rule: "MAJORITY Admins"
   Capabilities:
-    !!merge <<: *ChannelCapabilities
+    <<: *ChannelCapabilities
 
-# PROFILES
 Profiles:
-  NatuniOrdererGenesis:
+  DigitalIdentityOrdererGenesis:
     <<: *ChannelDefaults
     Orderer:
       <<: *OrdererDefaults
       Organizations:
-        - <<: *Orderer
+        - *OrdererOrg
     Consortiums:
-      NatuniConsortium:
+      DigitalIdentityConsortium:
         Organizations:
-          - <<: *Natuni
-          - <<: *Privateuni
-          - <<: *Interuni
-  NatuniChannel:
+          - *IdentityProvider
+          - *Verifier
+          - *User
+
+  DigitalIdentityChannel:
     <<: *ChannelDefaults
-    Consortium: NatuniConsortium
+    Consortium: DigitalIdentityConsortium
     Application:
       <<: *ApplicationDefaults
       Organizations:
-        - <<: *Natuni
-        - <<: *Privateuni
-        - <<: *Interuni
+        - *IdentityProvider
+        - *Verifier
+        - *User

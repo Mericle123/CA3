@@ -1,0 +1,159 @@
+version: '3.8'
+
+networks:
+  identity-net:
+    name: identity-net
+    driver: bridge
+
+volumes:
+  orderer.identitysystem.com:
+  peer0.idprovider.identitysystem.com:
+  peer0.verifier.identitysystem.com:
+  peer0.user.identitysystem.com:
+
+services:
+  # Orderer Service
+  orderer.identitysystem.com:
+    container_name: orderer.identitysystem.com
+    image: hyperledger/fabric-orderer:2.5.6
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7050
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=false
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=file
+      - ORDERER_GENERAL_BOOTSTRAPFILE=/var/hyperledger/orderer/genesis.block
+      - ORDERER_FILELEDGER_LOCATION=/var/hyperledger/production/orderer
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+    command: orderer
+    volumes:
+      - ./config/channel-artifacts/genesis.block:/var/hyperledger/orderer/genesis.block
+      - ./config/crypto-config/ordererOrganizations/identitysystem.com/orderers/orderer.identitysystem.com/msp:/var/hyperledger/orderer/msp
+      - orderer.identitysystem.com:/var/hyperledger/production/orderer
+    ports:
+      - 7050:7050
+    networks:
+      - identity-net
+
+  # Identity Provider Peer
+  peer0.idprovider.identitysystem.com:
+    container_name: peer0.idprovider.identitysystem.com
+    image: hyperledger/fabric-peer:2.5.6
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=identity-net
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=false
+      - CORE_PEER_ID=peer0.idprovider.identitysystem.com
+      - CORE_PEER_ADDRESS=peer0.idprovider.identitysystem.com:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.idprovider.identitysystem.com:7052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.idprovider.identitysystem.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.idprovider.identitysystem.com:7051
+      - CORE_PEER_LOCALMSPID=IdentityProviderMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/peer/msp
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./config/crypto-config/peerOrganizations/idprovider.identitysystem.com/peers/peer0.idprovider.identitysystem.com/msp:/etc/hyperledger/peer/msp
+      - peer0.idprovider.identitysystem.com:/var/hyperledger/production
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    ports:
+      - 7051:7051
+    depends_on:
+      - orderer.identitysystem.com
+    networks:
+      - identity-net
+
+  # Verifier Peer
+  peer0.verifier.identitysystem.com:
+    container_name: peer0.verifier.identitysystem.com
+    image: hyperledger/fabric-peer:2.5.6
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=identity-net
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=false
+      - CORE_PEER_ID=peer0.verifier.identitysystem.com
+      - CORE_PEER_ADDRESS=peer0.verifier.identitysystem.com:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.verifier.identitysystem.com:7052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.verifier.identitysystem.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.verifier.identitysystem.com:7051
+      - CORE_PEER_LOCALMSPID=VerifierMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/peer/msp
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./config/crypto-config/peerOrganizations/verifier.identitysystem.com/peers/peer0.verifier.identitysystem.com/msp:/etc/hyperledger/peer/msp
+      - peer0.verifier.identitysystem.com:/var/hyperledger/production
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    ports:
+      - 8051:7051
+    depends_on:
+      - orderer.identitysystem.com
+    networks:
+      - identity-net
+
+  # User Peer
+  peer0.user.identitysystem.com:
+    container_name: peer0.user.identitysystem.com
+    image: hyperledger/fabric-peer:2.5.6
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=identity-net
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=false
+      - CORE_PEER_ID=peer0.user.identitysystem.com
+      - CORE_PEER_ADDRESS=peer0.user.identitysystem.com:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.user.identitysystem.com:7052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.user.identitysystem.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.user.identitysystem.com:7051
+      - CORE_PEER_LOCALMSPID=UserMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/peer/msp
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./config/crypto-config/peerOrganizations/user.identitysystem.com/peers/peer0.user.identitysystem.com/msp:/etc/hyperledger/peer/msp
+      - peer0.user.identitysystem.com:/var/hyperledger/production
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    ports:
+      - 9051:7051
+    depends_on:
+      - orderer.identitysystem.com
+    networks:
+      - identity-net
+
+  # CLI Tool
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-tools:2.5.6
+    tty: true
+    stdin_open: true
+    environment:
+      - GOPATH=/opt/gopath
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS=peer0.idprovider.identitysystem.com:7051
+      - CORE_PEER_LOCALMSPID=IdentityProviderMSP
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/idprovider.identitysystem.com/users/Admin@idprovider.identitysystem.com/msp
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./:/opt/gopath/src/github.com/hyperledger/fabric/peer
+      - ./config/crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
+      - ./config/channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    depends_on:
+      - orderer.identitysystem.com
+      - peer0.idprovider.identitysystem.com
+      - peer0.verifier.identitysystem.com
+      - peer0.user.identitysystem.com
+    networks:
+      - identity-net

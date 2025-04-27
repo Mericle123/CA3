@@ -1,0 +1,133 @@
+Organizations:
+  - &OrdererOrg
+    Name: OrdererMSP    ID: OrdererMSP
+    MSPDir: ./crypto-config/ordererOrganizations/identitysystem.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+
+  - &IdentityProvider
+    Name: IdentityProviderMSP
+    ID: IdentityProviderMSP
+    MSPDir: ./crypto-config/peerOrganizations/idprovider.identitysystem.com/msp
+    Policies: &DefaultPolicies
+      Readers:
+        Type: Signature
+        Rule: "OR('IdentityProviderMSP.admin', 'IdentityProviderMSP.peer', 'IdentityProviderMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('IdentityProviderMSP.admin', 'IdentityProviderMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('IdentityProviderMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('IdentityProviderMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.idprovider.identitysystem.com
+        Port: 7051
+
+  - &Verifier
+    Name: VerifierMSP
+    ID: VerifierMSP
+    MSPDir: ./crypto-config/peerOrganizations/verifier.identitysystem.com/msp
+    Policies: *DefaultPolicies
+    AnchorPeers:
+      - Host: peer0.verifier.identitysystem.com
+        Port: 7051
+
+  - &User
+    Name: UserMSP
+    ID: UserMSP
+    MSPDir: ./crypto-config/peerOrganizations/user.identitysystem.com/msp
+    Policies: *DefaultPolicies
+    AnchorPeers:
+      - Host: peer0.user.identitysystem.com
+        Port: 7051
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_0: true
+
+Orderer: &OrdererDefaults
+  OrdererType: solo
+  Addresses:
+    - orderer.identitysystem.com:7050
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+
+Application: &ApplicationDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  DigitalIdentityOrdererGenesis:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+    Consortiums:
+      DigitalIdentityConsortium:
+        Organizations:
+          - *IdentityProvider
+          - *Verifier
+          - *User
+
+  DigitalIdentityChannel:
+    <<: *ChannelDefaults
+    Consortium: DigitalIdentityConsortium
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *IdentityProvider
+        - *Verifier
+        - *User
